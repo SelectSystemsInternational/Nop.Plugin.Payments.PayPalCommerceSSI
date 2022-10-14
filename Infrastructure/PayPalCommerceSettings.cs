@@ -1,12 +1,12 @@
 ﻿using Nop.Core.Configuration;
-using Nop.Plugin.Payments.PayPalCommerce.Domain;
+using Nop.Plugin.Payments.PayPalCommerceSSI.Domain;
 
-namespace Nop.Plugin.Payments.PayPalCommerce
+namespace Nop.Plugin.Payments.PayPalCommerceSSI.Settings
 {
     /// <summary>
     /// Represents plugin settings
     /// </summary>
-    public class PayPalCommerceSettings : ISettings
+    public class PayPalCommerceSettingsSSI : ISettings
     {
         /// <summary>
         /// Gets or sets merchant email
@@ -64,6 +64,26 @@ namespace Nop.Plugin.Payments.PayPalCommerce
         /// for example, if you are sure that the store will not have discounts less than a $1, set here 1.00
         /// </summary>
         public decimal MinDiscountAmount { get; set; }
+
+        /// <summary>
+        /// Gets or sets an additional fee
+        /// </summary>
+        public decimal AdditionalFee { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to "additional fee" is specified as percentage. true - percentage, false - fixed value.
+        /// </summary>
+        public bool AdditionalFeePercentage { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to use working or primary currency
+        /// </summary>
+        public bool UseWorkingCurrency { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to use sandbox (testing environment)
+        /// </summary>
+        public bool TestMode { get; set; }
 
         #region Advanced settings
 

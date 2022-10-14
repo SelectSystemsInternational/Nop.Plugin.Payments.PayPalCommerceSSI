@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace Nop.Plugin.Payments.PayPalCommerce.Domain.Onboarding
+namespace Nop.Plugin.Payments.PayPalCommerceSSI.Domain.Onboarding
 {
     /// <summary>
     /// Represents response result enumeration

@@ -39,11 +39,11 @@
     }
 </script>
 
-<form asp-controller="PayPalCommerce" asp-action="Configure" method="post">
+<form asp-controller="PayPalCommerceSSI" asp-action="Configure" method="post">
     <div class="cards-group">
         <div class="card card-default card-outline card-info" id="pnlOnboarding">
             <div class="card-header">
-                @T("Plugins.Payments.PayPalCommerce.Onboarding.Title")
+                @T("Plugins.Payments.PayPalCommerceSSI.Onboarding.Title")
             </div>
             <div class="card-body">
                 <p>
@@ -63,7 +63,7 @@
                         {
                             <i class="fas fa-times false-icon" nop-value="false"></i>
                         }
-                        @T("Plugins.Payments.PayPalCommerce.Onboarding.Process.Account")
+                        @T("Plugins.Payments.PayPalCommerceSSI.Onboarding.Process.Account")
                     </div>
                     <div class="onboarding-step-@(Model.OnboardingModel.EmailConfirmed ? "completed" : "in-process")">
                         @if (Model.OnboardingModel.EmailConfirmed)
@@ -74,7 +74,7 @@
                         {
                             <i class="fas fa-times false-icon" nop-value="false"></i>
                         }
-                        @T("Plugins.Payments.PayPalCommerce.Onboarding.Process.Email")
+                        @T("Plugins.Payments.PayPalCommerceSSI.Onboarding.Process.Email")
                     </div>
                     <div class="onboarding-step-@(Model.OnboardingModel.PaymentsReceivable ? "completed" : "in-process")">
                         @if (Model.OnboardingModel.PaymentsReceivable)
@@ -85,7 +85,7 @@
                         {
                             <i class="fas fa-times false-icon" nop-value="false"></i>
                         }
-                        @T("Plugins.Payments.PayPalCommerce.Onboarding.Process.Payments")
+                        @T("Plugins.Payments.PayPalCommerceSSI.Onboarding.Process.Payments")
                     </div>
                     <div class="onboarding-step-@(Model.OnboardingModel.PermissionGranted ? "completed" : "in-process")">
                         @if (Model.OnboardingModel.PermissionGranted)
@@ -96,7 +96,7 @@
                         {
                             <i class="fas fa-times false-icon" nop-value="false"></i>
                         }
-                        @T("Plugins.Payments.PayPalCommerce.Onboarding.Process.Permission")
+                        @T("Plugins.Payments.PayPalCommerceSSI.Onboarding.Process.Permission")
                     </div>
                     <hr />
                 }
@@ -118,7 +118,7 @@
                         @if (!string.IsNullOrEmpty(Model.OnboardingModel.SignUpUrl))
                         {
                             <a href="@Model.OnboardingModel.SignUpUrl&displayMode=minibrowser" target="_blank" class="btn btn-info" data-paypal-onboard-complete="onboardedCallback" data-paypal-button="true">
-                                @T("Plugins.Payments.PayPalCommerce.Onboarding.Button")
+                                @T("Plugins.Payments.PayPalCommerceSSI.Onboarding.Button")
                             </a>
                             <script src="@PayPalCommerceDefaults.Onboarding.ScriptUrl" id="paypal-js"></script>
                             <script asp-location="Footer">
@@ -133,7 +133,7 @@
                                     $.ajax({
                                         cache: false,
                                         type: 'POST',
-                                        url: '@Url.Action("SignUp", "PayPalCommerce")',
+                                        url: '@Url.Action("SignUp", "PayPalCommerceSSI")',
                                         data: postData
                                     });
                                 }
@@ -142,7 +142,7 @@
                         else if (!string.IsNullOrEmpty(Model.OnboardingModel.MerchantGuid))
                         {
                             <button type="submit" name="revoke" class="btn btn-danger">
-                                @T("Plugins.Payments.PayPalCommerce.Onboarding.ButtonRevoke")
+                                @T("Plugins.Payments.PayPalCommerceSSI.Onboarding.ButtonRevoke")
                             </button>
                         }
                     </div>
@@ -217,10 +217,6 @@
                         </div>
                     </div>
                     <div class="card card-default advanced-setting">
-                        <div class="card-header">
-                            @T("Plugins.Payments.PayPalCommerce.Prominently")
-                        </div>
-
                         <script>
                             $(document).ready(function () {
                                 $("#@Html.IdFor(model => model.DisplayLogoInHeaderLinks)").click(toggleDisplayLogo);
@@ -245,8 +241,8 @@
                                 }
                             }
                         </script>
-
                         <div class="card-body">
+                            <b>@T("Plugins.Payments.PayPalCommerceSSI.Prominently")</b>
                             <p>
                                 Build customer trust with PayPal branding on your website.<br />
                                 Feature the PayPal button on all pages that initiate checkout. Including PayPal branding early in the checkout experience helps increase site conversion. You can also attract new customers to your site by announcing PayPal acceptance.<br />
@@ -321,6 +317,46 @@
                     </div>
                     <div class="form-group row"></div>
                 }
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-override-store-checkbox asp-for="UseWorkingCurrency_OverrideForStore" asp-input="UseWorkingCurrency" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                        <nop-label asp-for="UseWorkingCurrency" />
+                    </div>
+                    <div class="col-md-3">
+                        <nop-editor asp-for="UseWorkingCurrency" />
+                        <span asp-validation-for="UseWorkingCurrency"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-override-store-checkbox asp-for="AdditionalFee_OverrideForStore" asp-input="AdditionalFee" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                        <nop-label asp-for="AdditionalFee" />
+                    </div>
+                    <div class="col-md-3">
+                        <nop-editor asp-for="AdditionalFee" />
+                        <span asp-validation-for="AdditionalFee"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-override-store-checkbox asp-for="AdditionalFeePercentage_OverrideForStore" asp-input="AdditionalFeePercentage" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                        <nop-label asp-for="AdditionalFeePercentage" />
+                    </div>
+                    <div class="col-md-3">
+                        <nop-editor asp-for="AdditionalFeePercentage" />
+                        <span asp-validation-for="AdditionalFeePercentage"></span>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-md-3">
+                        <nop-override-store-checkbox asp-for="TestMode_OverrideForStore" asp-input="TestMode" asp-store-scope="@Model.ActiveStoreScopeConfiguration" />
+                        <nop-label asp-for="TestMode" />
+                    </div>
+                    <div class="col-md-3">
+                        <nop-editor asp-for="TestMode" />
+                        <span asp-validation-for="TestMode"></span>
+                    </div>
+                </div>
                 <div class="form-group row" id="pnlSave">
                     <div class="col-md-9 offset-md-3">
                         <button type="submit" name="save" class="btn btn-primary">@T("Admin.Common.Save")</button>

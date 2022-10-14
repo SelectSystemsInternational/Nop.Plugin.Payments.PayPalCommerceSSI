@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace Nop.Plugin.Payments.PayPalCommerce.Domain.Onboarding
+namespace Nop.Plugin.Payments.PayPalCommerceSSI.Domain.Onboarding
 {
     /// <summary>
     /// Represents response from the service

@@ -1,6 +1,6 @@
 ﻿using Nop.Web.Framework.Models;
 
-namespace Nop.Plugin.Payments.PayPalCommerce.Models
+namespace Nop.Plugin.Payments.PayPalCommerceSSI.Models
 {
     /// <summary>
     /// Represents a payment info model

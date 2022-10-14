@@ -1,13 +1,14 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Nop.Web.Framework.Mvc.Routing;
+using Nop.Web.Infrastructure;
 
-namespace Nop.Plugin.Payments.PayPalCommerce.Infrastructure
+namespace Nop.Plugin.Payments.PayPalCommerceSSI.Infrastructure
 {
     /// <summary>
     /// Represents plugin route provider
     /// </summary>
-    public class RouteProvider : IRouteProvider
+    public class RouteProvider : BaseRouteProvider, IRouteProvider
     {
         /// <summary>
         /// Register routes
@@ -15,13 +16,24 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Infrastructure
         /// <param name="endpointRouteBuilder">Route builder</param>
         public void RegisterRoutes(IEndpointRouteBuilder endpointRouteBuilder)
         {
+            var lang = GetLanguageRoutePattern();
+
             endpointRouteBuilder.MapControllerRoute(PayPalCommerceDefaults.ConfigurationRouteName,
-                "Admin/PayPalCommerce/Configure",
-                new { controller = "PayPalCommerce", action = "Configure" });
+                "Admin/PayPalCommerceSSI/Configure",
+                new { controller = "PayPalCommerceSSI", action = "Configure" });
 
             endpointRouteBuilder.MapControllerRoute(PayPalCommerceDefaults.WebhookRouteName,
-                "Plugins/PayPalCommerce/Webhook",
-                new { controller = "PayPalCommerceWebhook", action = "WebhookHandler" });
+                "Plugins/PayPalCommerceSSI/Webhook",
+                new { controller = "PayPalCommerceSSIWebhook", action = "WebhookHandler" });
+
+            endpointRouteBuilder.MapControllerRoute(PayPalCommerceDefaults.CheckoutRouteName,
+                "PayPalCommerceSSI/paymenthandler",
+                new { controller = "PayPalCommerceSSICheckout", action = "PayPalCommerceRedirect" });
+
+            endpointRouteBuilder.MapControllerRoute(PayPalCommerceDefaults.CheckoutRouteNamePattern,
+                pattern: $"{lang}/PayPalCommerceSSI/paymenthandler",
+                defaults: new { controller = "PayPalCommerceSSICheckout", action = "PayPalCommerceRedirect" });
+
         }
 
         /// <summary>

@@ -8,14 +8,12 @@ using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.Primitives;
 using Nop.Core;
+using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Cms;
 using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
 using Nop.Core.Http.Extensions;
-using Nop.Plugin.Payments.PayPalCommerce.Domain;
-using Nop.Plugin.Payments.PayPalCommerce.Models;
-using Nop.Plugin.Payments.PayPalCommerce.Services;
 using Nop.Services.Cms;
 using Nop.Services.Common;
 using Nop.Services.Configuration;
@@ -26,7 +24,12 @@ using Nop.Services.Plugins;
 using Nop.Services.Stores;
 using Nop.Web.Framework.Infrastructure;
 
-namespace Nop.Plugin.Payments.PayPalCommerce
+using Nop.Plugin.Payments.PayPalCommerceSSI.Domain;
+using Nop.Plugin.Payments.PayPalCommerceSSI.Models;
+using Nop.Plugin.Payments.PayPalCommerceSSI.Services;
+using Nop.Plugin.Payments.PayPalCommerceSSI.Settings;
+
+namespace Nop.Plugin.Payments.PayPalCommerceSSI
 {
     /// <summary>
     /// Represents a payment method implementation
@@ -35,6 +38,8 @@ namespace Nop.Plugin.Payments.PayPalCommerce
     {
         #region Fields
 
+        private readonly IWorkContext _workContext;
+        private readonly IStoreContext _storeContext;
         private readonly CurrencySettings _currencySettings;
         private readonly IActionContextAccessor _actionContextAccessor;
         private readonly ICurrencyService _currencyService;
@@ -45,7 +50,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce
         private readonly IStoreService _storeService;
         private readonly IUrlHelperFactory _urlHelperFactory;
         private readonly PaymentSettings _paymentSettings;
-        private readonly PayPalCommerceSettings _settings;
+        private readonly PayPalCommerceSettingsSSI _settings;
         private readonly ServiceManager _serviceManager;
         private readonly WidgetSettings _widgetSettings;
 
@@ -53,7 +58,9 @@ namespace Nop.Plugin.Payments.PayPalCommerce
 
         #region Ctor
 
-        public PayPalCommercePaymentMethod(CurrencySettings currencySettings,
+        public PayPalCommercePaymentMethod(IWorkContext workContext,
+            IStoreContext storeContext, 
+            CurrencySettings currencySettings,
             IActionContextAccessor actionContextAccessor,
             ICurrencyService currencyService,
             IGenericAttributeService genericAttributeService,
@@ -63,10 +70,12 @@ namespace Nop.Plugin.Payments.PayPalCommerce
             IStoreService storeService,
             IUrlHelperFactory urlHelperFactory,
             PaymentSettings paymentSettings,
-            PayPalCommerceSettings settings,
+            PayPalCommerceSettingsSSI settings,
             ServiceManager serviceManager,
             WidgetSettings widgetSettings)
         {
+            _workContext = workContext;
+            _storeContext = storeContext;
             _currencySettings = currencySettings;
             _actionContextAccessor = actionContextAccessor;
             _currencyService = currencyService;
@@ -97,7 +106,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce
         public async Task<ProcessPaymentResult> ProcessPaymentAsync(ProcessPaymentRequest processPaymentRequest)
         {
             //try to get an order id from custom values
-            var orderIdKey = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerce.OrderId");
+            var orderIdKey = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerceSSI.OrderId");
             if (!processPaymentRequest.CustomValues.TryGetValue(orderIdKey, out var orderId) || string.IsNullOrEmpty(orderId?.ToString()))
                 throw new NopException("Failed to get the PayPal order ID");
 
@@ -132,7 +141,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce
             }
 
             return result;
-        }
+         }
 
         /// <summary>
         /// Post process payment (used by payment gateways that require redirecting to a third-party URL)
@@ -158,7 +167,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce
             if (capturePaymentRequest.Order.AuthorizationTransactionResult == "approved")
             {
                 //try to get an order id from custom values
-                var orderIdKey = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerce.OrderId");
+                var orderIdKey = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerceSSI.OrderId");
                 var customValues = _paymentService.DeserializeCustomValues(capturePaymentRequest.Order);
                 if (!customValues.TryGetValue(orderIdKey, out var orderId) || string.IsNullOrEmpty(orderId?.ToString()))
                     throw new NopException("Failed to get the PayPal order ID");
@@ -299,14 +308,14 @@ namespace Nop.Plugin.Payments.PayPalCommerce
         /// <summary>
         /// Gets additional handling fee
         /// </summary>
-        /// <param name="cart">Shoping cart</param>
+        /// <param name="cart">Shopping cart</param>
         /// <returns>
         /// A task that represents the asynchronous operation
         /// The task result contains the additional handling fee
         /// </returns>
-        public Task<decimal> GetAdditionalHandlingFeeAsync(IList<ShoppingCartItem> cart)
+        public async Task<decimal> GetAdditionalHandlingFeeAsync(IList<ShoppingCartItem> cart)
         {
-            return Task.FromResult(decimal.Zero);
+            return await _paymentService.CalculateAdditionalFeeAsync(cart, _settings.AdditionalFee, _settings.AdditionalFeePercentage);
         }
 
         /// <summary>
@@ -389,14 +398,17 @@ namespace Nop.Plugin.Payments.PayPalCommerce
         {
             return Task.FromResult<IList<string>>(new List<string>
             {
-                PublicWidgetZones.CheckoutPaymentInfoTop,
+                //PublicWidgetZones.CheckoutPaymentInfoTop,
                 PublicWidgetZones.OpcContentBefore,
                 PublicWidgetZones.ProductDetailsTop,
                 PublicWidgetZones.ProductDetailsAddInfo,
                 PublicWidgetZones.OrderSummaryContentBefore,
-                PublicWidgetZones.OrderSummaryContentAfter,
+                PublicWidgetZones.OrderSummaryTotals,
+                PublicWidgetZones.CheckoutConfirmBottom,
                 PublicWidgetZones.HeaderLinksBefore,
-                PublicWidgetZones.Footer
+                PublicWidgetZones.OpCheckoutConfirmBottom,
+                PublicWidgetZones.CheckoutConfirmBottom,
+                PublicWidgetZones.Footer            
             });
         }
 
@@ -413,12 +425,16 @@ namespace Nop.Plugin.Payments.PayPalCommerce
             if (widgetZone.Equals(PublicWidgetZones.CheckoutPaymentInfoTop) ||
                 widgetZone.Equals(PublicWidgetZones.OpcContentBefore) ||
                 widgetZone.Equals(PublicWidgetZones.ProductDetailsTop) ||
-                widgetZone.Equals(PublicWidgetZones.OrderSummaryContentBefore))
+                widgetZone.Equals(PublicWidgetZones.OrderSummaryContentBefore) 
+                )
             {
                 return PayPalCommerceDefaults.SCRIPT_VIEW_COMPONENT_NAME;
             }
 
-            if (widgetZone.Equals(PublicWidgetZones.ProductDetailsAddInfo) || widgetZone.Equals(PublicWidgetZones.OrderSummaryContentAfter))
+            if (widgetZone == PublicWidgetZones.OpCheckoutConfirmBottom || widgetZone == PublicWidgetZones.CheckoutConfirmBottom)
+                return PayPalCommerceDefaults.PAYMENT_INFO_VIEW_COMPONENT_NAME;
+
+            if (widgetZone.Equals(PublicWidgetZones.ProductDetailsAddInfo) || widgetZone.Equals(PublicWidgetZones.OrderSummaryTotals))
                 return PayPalCommerceDefaults.BUTTONS_VIEW_COMPONENT_NAME;
 
             if (widgetZone.Equals(PublicWidgetZones.HeaderLinksBefore) || widgetZone.Equals(PublicWidgetZones.Footer))
@@ -433,8 +449,9 @@ namespace Nop.Plugin.Payments.PayPalCommerce
         /// <returns>A task that represents the asynchronous operation</returns>
         public override async Task InstallAsync()
         {
+
             //settings
-            await _settingService.SaveSettingAsync(new PayPalCommerceSettings
+            await _settingService.SaveSettingAsync(new PayPalCommerceSettingsSSI
             {
                 PaymentType = PaymentType.Capture,
                 LogoInHeaderLinks = @"<!-- PayPal Logo --><li><a href=""https://www.paypal.com/webapps/mpp/paypal-popup"" title=""How PayPal Works"" onclick=""javascript:window.open('https://www.paypal.com/webapps/mpp/paypal-popup','WIPaypal','toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=yes, resizable=yes, width=1060, height=700'); return false;""><img style=""padding-top:10px;"" src=""https://www.paypalobjects.com/webstatic/mktg/logo/bdg_now_accepting_pp_2line_w.png"" border=""0"" alt=""Now accepting PayPal""></a></li><!-- PayPal Logo -->",
@@ -464,54 +481,66 @@ namespace Nop.Plugin.Payments.PayPalCommerce
             //locales
             await _localizationService.AddLocaleResourceAsync(new Dictionary<string, string>
             {
-                ["Enums.Nop.Plugin.Payments.PayPalCommerce.Domain.PaymentType.Authorize"] = "Authorize",
-                ["Enums.Nop.Plugin.Payments.PayPalCommerce.Domain.PaymentType.Capture"] = "Capture",
-                ["Plugins.Payments.PayPalCommerce.Configuration.Error"] = "Error: {0} (see details in the <a href=\"{1}\" target=\"_blank\">log</a>)",
-                ["Plugins.Payments.PayPalCommerce.Credentials.Valid"] = "The specified credentials are valid",
-                ["Plugins.Payments.PayPalCommerce.Credentials.Invalid"] = "The specified credentials are invalid",
-                ["Plugins.Payments.PayPalCommerce.Fields.ClientId"] = "Client ID",
-                ["Plugins.Payments.PayPalCommerce.Fields.ClientId.Hint"] = "Enter your PayPal REST API client ID. This identifies your PayPal account and determines where transactions are paid.",
-                ["Plugins.Payments.PayPalCommerce.Fields.ClientId.Required"] = "Client ID is required",
-                ["Plugins.Payments.PayPalCommerce.Fields.DisplayButtonsOnProductDetails"] = "Display buttons on product details",
-                ["Plugins.Payments.PayPalCommerce.Fields.DisplayButtonsOnProductDetails.Hint"] = "Determine whether to display PayPal buttons on product details pages, clicking on them matches the behavior of the default 'Add to cart' button.",
-                ["Plugins.Payments.PayPalCommerce.Fields.DisplayButtonsOnShoppingCart"] = "Display buttons on shopping cart",
-                ["Plugins.Payments.PayPalCommerce.Fields.DisplayButtonsOnShoppingCart.Hint"] = "Determine whether to display PayPal buttons on the shopping cart page instead of the default checkout button.",
-                ["Plugins.Payments.PayPalCommerce.Fields.DisplayLogoInFooter"] = "Display logo in footer",
-                ["Plugins.Payments.PayPalCommerce.Fields.DisplayLogoInFooter.Hint"] = "Determine whether to display PayPal logo in the footer. These logos and banners are a great way to let your buyers know that you choose PayPal to securely process their payments.",
-                ["Plugins.Payments.PayPalCommerce.Fields.DisplayLogoInHeaderLinks"] = "Display logo in header links",
-                ["Plugins.Payments.PayPalCommerce.Fields.DisplayLogoInHeaderLinks.Hint"] = "Determine whether to display PayPal logo in header links. These logos and banners are a great way to let your buyers know that you choose PayPal to securely process their payments.",
-                ["Plugins.Payments.PayPalCommerce.Fields.Email"] = "Email",
-                ["Plugins.Payments.PayPalCommerce.Fields.Email.Hint"] = "Enter your email to get access to PayPal payments.",
-                ["Plugins.Payments.PayPalCommerce.Fields.LogoInFooter"] = "Logo source code",
-                ["Plugins.Payments.PayPalCommerce.Fields.LogoInFooter.Hint"] = "Enter source code of the logo. Find more logos and banners on PayPal Logo Center. You can also modify the code to fit correctly into your theme and site style.",
-                ["Plugins.Payments.PayPalCommerce.Fields.LogoInHeaderLinks"] = "Logo source code",
-                ["Plugins.Payments.PayPalCommerce.Fields.LogoInHeaderLinks.Hint"] = "Enter source code of the logo. Find more logos and banners on PayPal Logo Center. You can also modify the code to fit correctly into your theme and site style.",
-                ["Plugins.Payments.PayPalCommerce.Fields.PaymentType"] = "Payment type",
-                ["Plugins.Payments.PayPalCommerce.Fields.PaymentType.Hint"] = "Choose a payment type to either capture payment immediately or authorize a payment for an order after order creation. Notice, that alternative payment methods don't work with the 'authorize and capture later' feature.",
-                ["Plugins.Payments.PayPalCommerce.Fields.SecretKey"] = "Secret",
-                ["Plugins.Payments.PayPalCommerce.Fields.SecretKey.Hint"] = "Enter your PayPal REST API secret.",
-                ["Plugins.Payments.PayPalCommerce.Fields.SecretKey.Required"] = "Secret is required",
-                ["Plugins.Payments.PayPalCommerce.Fields.SetCredentialsManually"] = "Specify API credentials manually",
-                ["Plugins.Payments.PayPalCommerce.Fields.SetCredentialsManually.Hint"] = "Determine whether to manually set the credentials (for example, there is already an app created, or if you want to use the sandbox mode).",
-                ["Plugins.Payments.PayPalCommerce.Fields.UseSandbox"] = "Use sandbox",
-                ["Plugins.Payments.PayPalCommerce.Fields.UseSandbox.Hint"] = "Determine whether to use the sandbox environment for testing purposes.",
-                ["Plugins.Payments.PayPalCommerce.Onboarding.AccessRevoked"] = "Profile access has been successfully revoked.",
-                ["Plugins.Payments.PayPalCommerce.Onboarding.Button"] = "Sign up for PayPal",
-                ["Plugins.Payments.PayPalCommerce.Onboarding.ButtonRevoke"] = "Revoke access",
-                ["Plugins.Payments.PayPalCommerce.Onboarding.Completed"] = "Onboarding is sucessfully completed",
-                ["Plugins.Payments.PayPalCommerce.Onboarding.EmailSet"] = "Email is set, now you are ready to sign up for PayPal",
-                ["Plugins.Payments.PayPalCommerce.Onboarding.Error"] = "An error occurred during the onboarding process, the credentials are empty",
-                ["Plugins.Payments.PayPalCommerce.Onboarding.InProcess"] = "Onboarding is in process, see details below",
-                ["Plugins.Payments.PayPalCommerce.Onboarding.Process.Account"] = "PayPal account is created",
-                ["Plugins.Payments.PayPalCommerce.Onboarding.Process.Email"] = "Email address is confirmed",
-                ["Plugins.Payments.PayPalCommerce.Onboarding.Process.Payments"] = "Billing information is set",
-                ["Plugins.Payments.PayPalCommerce.Onboarding.Process.Permission"] = "Permissions are granted",
-                ["Plugins.Payments.PayPalCommerce.Onboarding.Title"] = "Sign up for PayPal",
-                ["Plugins.Payments.PayPalCommerce.OrderId"] = "PayPal order ID",
-                ["Plugins.Payments.PayPalCommerce.Prominently"] = "Feature PayPal Prominently",
-                ["Plugins.Payments.PayPalCommerce.PaymentMethodDescription"] = "PayPal Checkout with using methods like Venmo, PayPal Credit, credit card payments",
-                ["Plugins.Payments.PayPalCommerce.RoundingWarning"] = "It looks like you have <a href=\"{0}\" target=\"_blank\">RoundPricesDuringCalculation</a> setting disabled. Keep in mind that this can lead to a discrepancy of the order total amount, as PayPal rounds to two decimals only.",
-                ["Plugins.Payments.PayPalCommerce.WebhookWarning"] = "Webhook was not created, so some functions may not work correctly (see details in the <a href=\"{0}\" target=\"_blank\">log</a>. Please ensure that your store is under SSL, PayPal service doesn't send requests to unsecured sites.)"
+                ["Enums.Nop.Plugin.Payments.PayPalCommerceSSI.Domain.PaymentType.Authorize"] = "Authorize",
+                ["Enums.Nop.Plugin.Payments.PayPalCommerceSSI.Domain.PaymentType.Capture"] = "Capture",
+
+                ["Plugins.Payments.PayPalCommerceSSI.Configuration.Error"] = "Error: {0} (see details in the <a href=\"{1}\" target=\"_blank\">log</a>)",
+                ["Plugins.Payments.PayPalCommerceSSI.Credentials.Valid"] = "The specified credentials are valid",
+                ["Plugins.Payments.PayPalCommerceSSI.Credentials.Invalid"] = "The specified credentials are invalid",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.ClientId"] = "Client ID",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.ClientId.Hint"] = "Enter your PayPal REST API client ID. This identifies your PayPal account and determines where transactions are paid.",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.ClientId.Required"] = "Client ID is required",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.DisplayButtonsOnProductDetails"] = "Display buttons on product details",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.DisplayButtonsOnProductDetails.Hint"] = "Determine whether to display PayPal buttons on product details pages, clicking on them matches the behavior of the default 'Add to cart' button.",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.DisplayButtonsOnShoppingCart"] = "Display buttons on shopping cart",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.DisplayButtonsOnShoppingCart.Hint"] = "Determine whether to display PayPal buttons on the shopping cart page instead of the default checkout button.",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.DisplayLogoInFooter"] = "Display logo in footer",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.DisplayLogoInFooter.Hint"] = "Determine whether to display PayPal logo in the footer. These logos and banners are a great way to let your buyers know that you choose PayPal to securely process their payments.",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.DisplayLogoInHeaderLinks"] = "Display logo in header links",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.DisplayLogoInHeaderLinks.Hint"] = "Determine whether to display PayPal logo in header links. These logos and banners are a great way to let your buyers know that you choose PayPal to securely process their payments.",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.Email"] = "Email",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.Email.Hint"] = "Enter your email to get access to PayPal payments.",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.LogoInFooter"] = "Logo source code",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.LogoInFooter.Hint"] = "Enter source code of the logo. Find more logos and banners on PayPal Logo Center. You can also modify the code to fit correctly into your theme and site style.",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.LogoInHeaderLinks"] = "Logo source code",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.LogoInHeaderLinks.Hint"] = "Enter source code of the logo. Find more logos and banners on PayPal Logo Center. You can also modify the code to fit correctly into your theme and site style.",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.PaymentType"] = "Payment type",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.PaymentType.Hint"] = "Choose a payment type to either capture payment immediately or authorize a payment for an order after order creation. Notice, that alternative payment methods don't work with the 'authorize and capture later' feature.",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.SecretKey"] = "Secret",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.SecretKey.Hint"] = "Enter your PayPal REST API secret.",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.SecretKey.Required"] = "Secret is required",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.SetCredentialsManually"] = "Specify API credentials manually",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.SetCredentialsManually.Hint"] = "Determine whether to manually set the credentials (for example, there is already an app created, or if you want to use the sandbox mode).",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.UseSandbox"] = "Use sandbox",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.UseSandbox.Hint"] = "Determine whether to use the sandbox environment for testing purposes.",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.AdditionalFee"] = "Additional fee",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.AdditionalFee.Hint"] = "Enter additional fee to charge your customers.",         
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.AdditionalFeePercentage"] = "Additional fee. Use percentage",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.AdditionalFeePercentage.Hint"] = "Determines whether to apply a percentage additional fee to the order total. If not enabled, a fixed value is used.",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.UseWorkingCurrency"] = "Use Working Currency",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.UseWorkingCurrency.Hint"] = "Use Working Currency rather than Primary Currency when sending transactions to PayPal",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.TestMode"] = "Use Test Mode",
+                ["Plugins.Payments.PayPalCommerceSSI.Fields.TestMode.Hint"] = "Check to enable test mode (Order transactions are logged).",
+
+                ["Plugins.Payments.PayPalCommerceSSI.Onboarding.AccessRevoked"] = "Profile access has been successfully revoked.",
+                ["Plugins.Payments.PayPalCommerceSSI.Onboarding.Button"] = "Sign up for PayPal",
+                ["Plugins.Payments.PayPalCommerceSSI.Onboarding.ButtonRevoke"] = "Revoke access",
+                ["Plugins.Payments.PayPalCommerceSSI.Onboarding.Completed"] = "Onboarding is sucessfully completed",
+                ["Plugins.Payments.PayPalCommerceSSI.Onboarding.EmailSet"] = "Email is set, now you are ready to sign up for PayPal",
+                ["Plugins.Payments.PayPalCommerceSSI.Onboarding.Error"] = "An error occurred during the onboarding process, the credentials are empty",
+                ["Plugins.Payments.PayPalCommerceSSI.Onboarding.InProcess"] = "Onboarding is in process, see details below",
+                ["Plugins.Payments.PayPalCommerceSSI.Onboarding.Process.Account"] = "PayPal account is created",
+                ["Plugins.Payments.PayPalCommerceSSI.Onboarding.Process.Email"] = "Email address is confirmed",
+                ["Plugins.Payments.PayPalCommerceSSI.Onboarding.Process.Payments"] = "Billing information is set",
+                ["Plugins.Payments.PayPalCommerceSSI.Onboarding.Process.Permission"] = "Permissions are granted",
+                ["Plugins.Payments.PayPalCommerceSSI.Onboarding.Title"] = "Sign up for PayPal",
+                ["Plugins.Payments.PayPalCommerceSSI.OrderId"] = "PayPal order ID",
+                ["Plugins.Payments.PayPalCommerceSSI.Prominently"] = "Feature PayPal Prominently",
+                ["Plugins.Payments.PayPalCommerceSSI.PaymentMethodDescription"] = "PayPal Checkout with using methods like Venmo, PayPal Credit, credit card payments",
+                ["Plugins.Payments.PayPalCommerceSSI.RoundingWarning"] = "It looks like you have <a href=\"{0}\" target=\"_blank\">RoundPricesDuringCalculation</a> setting disabled. Keep in mind that this can lead to a discrepancy of the order total amount, as PayPal rounds to two decimals only.",
+                ["Plugins.Payments.PayPalCommerceSSI.WebhookWarning"] = "Webhook was not created, so some functions may not work correctly (see details in the <a href=\"{0}\" target=\"_blank\">log</a>. Please ensure that your store is under SSL, PayPal service doesn't send requests to unsecured sites.)",
+                ["Plugins.Payments.PayPalCommerceSSI.CustomerInstructions"] = "Click the Paypal or Debit or Credit Card button to Confirm the Order and Make payment. Then enter the information required on the Payment page",
+
             });
 
             await base.InstallAsync();
@@ -528,7 +557,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce
             var storeIds = new List<int> { 0 }.Union(stores.Select(store => store.Id));
             foreach (var storeId in storeIds)
             {
-                var settings = await _settingService.LoadSettingAsync<PayPalCommerceSettings>(storeId);
+                var settings = await _settingService.LoadSettingAsync<PayPalCommerceSettingsSSI>(storeId);
                 if (!string.IsNullOrEmpty(settings.WebhookUrl))
                     await _serviceManager.DeleteWebhookAsync(settings);
             }
@@ -546,11 +575,11 @@ namespace Nop.Plugin.Payments.PayPalCommerce
                 await _settingService.SaveSettingAsync(_widgetSettings);
             }
 
-            await _settingService.DeleteSettingAsync<PayPalCommerceSettings>();
+            await _settingService.DeleteSettingAsync<PayPalCommerceSettingsSSI>();
 
             //locales
-            await _localizationService.DeleteLocaleResourcesAsync("Enums.Nop.Plugin.Payments.PayPalCommerce");
-            await _localizationService.DeleteLocaleResourcesAsync("Plugins.Payments.PayPalCommerce");
+            await _localizationService.DeleteLocaleResourcesAsync("Enums.Nop.Plugin.Payments.PayPalCommerceSSI");
+            await _localizationService.DeleteLocaleResourcesAsync("Plugins.Payments.PayPalCommerceSSI");
 
             await base.UninstallAsync();
         }
@@ -561,7 +590,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce
         /// <returns>A task that represents the asynchronous operation</returns>
         public async Task<string> GetPaymentMethodDescriptionAsync()
         {
-            return await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerce.PaymentMethodDescription");
+            return await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerceSSI.PaymentMethodDescription");
         }
 
         #endregion
@@ -601,7 +630,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce
         /// <summary>
         /// Gets a value indicating whether we should display a payment information page for this plugin
         /// </summary>
-        public bool SkipPaymentInfo => false;
+        public bool SkipPaymentInfo => true;
 
         /// <summary>
         /// Gets a value indicating whether to hide this plugin on the widget list page in the admin area

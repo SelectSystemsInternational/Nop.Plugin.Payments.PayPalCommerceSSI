@@ -5,14 +5,14 @@ using System.Threading.Tasks;
 using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
 using Nop.Core;
-using Nop.Plugin.Payments.PayPalCommerce.Domain.Onboarding;
+using Nop.Plugin.Payments.PayPalCommerceSSI.Domain.Onboarding;
 
-namespace Nop.Plugin.Payments.PayPalCommerce.Services
+namespace Nop.Plugin.Payments.PayPalCommerceSSI.Services
 {
     /// <summary>
     /// Represents HTTP client to request onboarding services
     /// </summary>
-    public class OnboardingHttpClient
+    public class PayPalCommerceOnboardingHttpClient
     {
         #region Fields
 
@@ -22,7 +22,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Services
 
         #region Ctor
 
-        public OnboardingHttpClient(HttpClient httpClient)
+        public PayPalCommerceOnboardingHttpClient(HttpClient httpClient)
         {
             //configure client
             httpClient.BaseAddress = new Uri(PayPalCommerceDefaults.Onboarding.ServiceUrl);

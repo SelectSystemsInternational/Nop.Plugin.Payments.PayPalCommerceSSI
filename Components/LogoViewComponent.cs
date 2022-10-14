@@ -3,34 +3,36 @@ using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Nop.Core;
-using Nop.Plugin.Payments.PayPalCommerce.Services;
 using Nop.Services.Payments;
 using Nop.Web.Framework.Components;
 using Nop.Web.Framework.Infrastructure;
 
-namespace Nop.Plugin.Payments.PayPalCommerce.Components
+using Nop.Plugin.Payments.PayPalCommerceSSI.Services;
+using Nop.Plugin.Payments.PayPalCommerceSSI.Settings;
+
+namespace Nop.Plugin.Payments.PayPalCommerceSSI.Components
 {
     /// <summary>
     /// Represents the view component to display logo
     /// </summary>
     [ViewComponent(Name = PayPalCommerceDefaults.LOGO_VIEW_COMPONENT_NAME)]
-    public class LogoViewComponent : NopViewComponent
+    public class PayPalCommerceLogoViewComponent : NopViewComponent
     {
         #region Fields
 
         private readonly IPaymentPluginManager _paymentPluginManager;
         private readonly IStoreContext _storeContext;
         private readonly IWorkContext _workContext;
-        private readonly PayPalCommerceSettings _settings;
+        private readonly PayPalCommerceSettingsSSI _settings;
 
         #endregion
 
         #region Ctor
 
-        public LogoViewComponent(IPaymentPluginManager paymentPluginManager,
+        public PayPalCommerceLogoViewComponent(IPaymentPluginManager paymentPluginManager,
             IStoreContext storeContext,
             IWorkContext workContext,
-            PayPalCommerceSettings settings)
+            PayPalCommerceSettingsSSI settings)
         {
             _paymentPluginManager = paymentPluginManager;
             _storeContext = storeContext;

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Nop.Core;
 
-namespace Nop.Plugin.Payments.PayPalCommerce
+namespace Nop.Plugin.Payments.PayPalCommerceSSI
 {
     /// <summary>
     /// Represents plugin constants
@@ -11,7 +11,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce
         /// <summary>
         /// Gets the plugin system name
         /// </summary>
-        public static string SystemName => "Payments.PayPalCommerce";
+        public static string SystemName => "Payments.PayPalCommerceSSI";
 
         /// <summary>
         /// Gets the user agent used to request third-party services
@@ -26,12 +26,22 @@ namespace Nop.Plugin.Payments.PayPalCommerce
         /// <summary>
         /// Gets the configuration route name
         /// </summary>
-        public static string ConfigurationRouteName => "Plugin.Payments.PayPalCommerce.Configure";
+        public static string ConfigurationRouteName => "Plugin.Payments.PayPalCommerceSSI.Configure";
 
         /// <summary>
         /// Gets the webhook route name
         /// </summary>
-        public static string WebhookRouteName => "Plugin.Payments.PayPalCommerce.Webhook";
+        public static string WebhookRouteName => "Plugin.Payments.PayPalCommerceSSI.Webhook";
+
+        /// <summary>
+        /// Gets the webhook route name
+        /// </summary>
+        public static string CheckoutRouteName => "Plugin.Payments.PayPalCommerceSSI.PaymentHandler";
+
+        /// <summary>
+        /// Gets the webhook route name
+        /// </summary>
+        public static string CheckoutRouteNamePattern => "Plugin.Payments.PayPalCommerceSSI.PaymentHandler.Pattern";
 
         /// <summary>
         /// Gets the one page checkout route name
@@ -81,22 +91,22 @@ namespace Nop.Plugin.Payments.PayPalCommerce
         /// <summary>
         /// Gets a name of the view component to display payment info in public store
         /// </summary>
-        public const string PAYMENT_INFO_VIEW_COMPONENT_NAME = "PayPalCommercePaymentInfo";
+        public const string PAYMENT_INFO_VIEW_COMPONENT_NAME = "PayPalCommerceSSIPaymentInfo";
 
         /// <summary>
         /// Gets a name of the view component to add script to pages
         /// </summary>
-        public const string SCRIPT_VIEW_COMPONENT_NAME = "PayPalCommerceScript";
+        public const string SCRIPT_VIEW_COMPONENT_NAME = "PayPalCommerceSSIScript";
 
         /// <summary>
         /// Gets a name of the view component to display buttons
         /// </summary>
-        public const string BUTTONS_VIEW_COMPONENT_NAME = "PayPalCommerceButtons";
+        public const string BUTTONS_VIEW_COMPONENT_NAME = "PayPalCommerceSSIButtons";
 
         /// <summary>
         /// Gets a name of the view component to display logo
         /// </summary>
-        public const string LOGO_VIEW_COMPONENT_NAME = "PayPalCommerceLogo";
+        public const string LOGO_VIEW_COMPONENT_NAME = "PayPalCommerceSSILogo";
 
         #region Onboarding
 

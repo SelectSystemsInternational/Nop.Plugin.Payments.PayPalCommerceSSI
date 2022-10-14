@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json;
 
-namespace Nop.Plugin.Payments.PayPalCommerce.Domain.Onboarding
+namespace Nop.Plugin.Payments.PayPalCommerceSSI.Domain.Onboarding
 {
     /// <summary>
     /// Represents request to get URL to sign up

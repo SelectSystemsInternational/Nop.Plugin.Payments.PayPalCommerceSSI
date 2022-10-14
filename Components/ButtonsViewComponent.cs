@@ -3,13 +3,15 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Nop.Core;
-using Nop.Plugin.Payments.PayPalCommerce.Services;
 using Nop.Services.Payments;
 using Nop.Web.Framework.Components;
 using Nop.Web.Framework.Infrastructure;
 using Nop.Web.Models.Catalog;
 
-namespace Nop.Plugin.Payments.PayPalCommerce.Components
+using Nop.Plugin.Payments.PayPalCommerceSSI.Services;
+using Nop.Plugin.Payments.PayPalCommerceSSI.Settings;
+
+namespace Nop.Plugin.Payments.PayPalCommerceSSI.Components
 {
     /// <summary>
     /// Represents the view component to display buttons
@@ -22,7 +24,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Components
         private readonly IPaymentPluginManager _paymentPluginManager;
         private readonly IStoreContext _storeContext;
         private readonly IWorkContext _workContext;
-        private readonly PayPalCommerceSettings _settings;
+        private readonly PayPalCommerceSettingsSSI _settings;
 
         #endregion
 
@@ -31,7 +33,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Components
         public ButtonsViewComponent(IPaymentPluginManager paymentPluginManager,
             IStoreContext storeContext,
             IWorkContext workContext,
-            PayPalCommerceSettings settings)
+            PayPalCommerceSettingsSSI settings)
         {
             _paymentPluginManager = paymentPluginManager;
             _storeContext = storeContext;
@@ -62,16 +64,16 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Components
             if (!ServiceManager.IsConfigured(_settings))
                 return Content(string.Empty);
 
-            if (!widgetZone.Equals(PublicWidgetZones.ProductDetailsAddInfo) && !widgetZone.Equals(PublicWidgetZones.OrderSummaryContentAfter))
+            if (!widgetZone.Equals(PublicWidgetZones.ProductDetailsAddInfo) && !widgetZone.Equals(PublicWidgetZones.OrderSummaryTotals))
                 return Content(string.Empty);
 
-            if (widgetZone.Equals(PublicWidgetZones.OrderSummaryContentAfter))
+            if (widgetZone.Equals(PublicWidgetZones.OrderSummaryTotals))
             {
                 if (!_settings.DisplayButtonsOnShoppingCart)
                     return Content(string.Empty);
 
                 var routeName = HttpContext.GetEndpoint()?.Metadata.GetMetadata<RouteNameMetadata>()?.RouteName;
-                if (routeName != PayPalCommerceDefaults.ShoppingCartRouteName)
+                if (!routeName.Contains(PayPalCommerceDefaults.ShoppingCartRouteName))
                     return Content(string.Empty);
             }
 
@@ -79,7 +81,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Components
                 return Content(string.Empty);
 
             var productId = additionalData is ProductDetailsModel.AddToCartModel model ? model.ProductId : 0;
-            return View("~/Plugins/Payments.PayPalCommerce/Views/Buttons.cshtml", (widgetZone, productId));
+            return View("~/Plugins/SSI.Payments.PayPalCommerce/Views/Buttons.cshtml", (widgetZone, productId));
         }
 
         #endregion

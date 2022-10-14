@@ -1,4 +1,4 @@
-﻿namespace Nop.Plugin.Payments.PayPalCommerce.Domain
+﻿namespace Nop.Plugin.Payments.PayPalCommerceSSI.Domain
 {
     /// <summary>
     /// Represents payment type enumeration

@@ -1,11 +1,11 @@
 ﻿{
   "Group": "Payment methods",
-  "FriendlyName": "PayPal Commerce",
-  "SystemName": "Payments.PayPalCommerce",
-  "Version": "4.40.4.1",
+  "FriendlyName": "PayPal Commerce SSI",
+  "SystemName": "Payments.PayPalCommerceSSI",
+  "Version": "4.40.4.6",
   "SupportedVersions": [ "4.40" ],
   "Author": "nopCommerce team",
   "DisplayOrder": -1,
-  "FileName": "Nop.Plugin.Payments.PayPalCommerce.dll",
+  "FileName": "Nop.Plugin.Payments.PayPalCommerceSSI.dll",
   "Description": "PayPal Commerce Platform is a full-stack payment processing solution that helps you accept and make payments globally"
 }

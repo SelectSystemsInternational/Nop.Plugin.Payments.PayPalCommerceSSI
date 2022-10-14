@@ -5,12 +5,15 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.AspNetCore.Routing;
 using Nop.Core;
-using Nop.Plugin.Payments.PayPalCommerce.Services;
+using Nop.Core.Domain.Orders;
 using Nop.Services.Payments;
 using Nop.Web.Framework.Components;
 using Nop.Web.Framework.Infrastructure;
 
-namespace Nop.Plugin.Payments.PayPalCommerce.Components
+using Nop.Plugin.Payments.PayPalCommerceSSI.Services;
+using Nop.Plugin.Payments.PayPalCommerceSSI.Settings;
+
+namespace Nop.Plugin.Payments.PayPalCommerceSSI.Components
 {
     /// <summary>
     /// Represents the view component to add script to pages
@@ -23,8 +26,9 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Components
         private readonly IPaymentPluginManager _paymentPluginManager;
         private readonly IStoreContext _storeContext;
         private readonly IWorkContext _workContext;
-        private readonly PayPalCommerceSettings _settings;
+        private readonly PayPalCommerceSettingsSSI _settings;
         private readonly ServiceManager _serviceManager;
+        private readonly OrderSettings _orderSettings;
 
         #endregion
 
@@ -33,14 +37,16 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Components
         public ScriptViewComponent(IPaymentPluginManager paymentPluginManager,
             IStoreContext storeContext,
             IWorkContext workContext,
-            PayPalCommerceSettings settings,
-            ServiceManager serviceManager)
+            PayPalCommerceSettingsSSI settings,
+            ServiceManager serviceManager,
+            OrderSettings orderSettings)
         {
             _paymentPluginManager = paymentPluginManager;
             _storeContext = storeContext;
             _workContext = workContext;
             _settings = settings;
             _serviceManager = serviceManager;
+            _orderSettings = orderSettings;
         }
 
         #endregion
@@ -69,18 +75,19 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Components
             if (!widgetZone.Equals(PublicWidgetZones.CheckoutPaymentInfoTop) &&
                 !widgetZone.Equals(PublicWidgetZones.OpcContentBefore) &&
                 !widgetZone.Equals(PublicWidgetZones.ProductDetailsTop) &&
-                !widgetZone.Equals(PublicWidgetZones.OrderSummaryContentBefore))
+                !widgetZone.Equals(PublicWidgetZones.OrderSummaryContentBefore) &&
+                !widgetZone.Equals(PublicWidgetZones.CheckoutConfirmBottom))
             {
                 return Content(string.Empty);
             }
 
-            if (widgetZone.Equals(PublicWidgetZones.OrderSummaryContentBefore))
+            if (widgetZone.Equals(PublicWidgetZones.OrderSummaryContentBefore) && _orderSettings.OnePageCheckoutEnabled)
             {
                 if (!_settings.DisplayButtonsOnShoppingCart)
                     return Content(string.Empty);
 
                 var routeName = HttpContext.GetEndpoint()?.Metadata.GetMetadata<RouteNameMetadata>()?.RouteName;
-                if (routeName != PayPalCommerceDefaults.ShoppingCartRouteName)
+                if (!routeName.Contains(PayPalCommerceDefaults.ShoppingCartRouteName))
                     return Content(string.Empty);
             }
 

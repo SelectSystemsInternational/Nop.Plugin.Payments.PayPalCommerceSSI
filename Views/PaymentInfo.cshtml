@@ -1,14 +1,52 @@
 ﻿@model PaymentInfoModel
 
+@using Nop.Core;
+@using Nop.Services.Configuration;
+
+@inject IStoreContext storeContext
+@inject ISettingService settingService
+
+@{
+    var storeId = (await storeContext.GetCurrentStoreAsync()).Id;
+    var useOnePageCheckout = await settingService.GetSettingByKeyAsync("ordersettings.onepagecheckoutenabled", false, storeId, true);
+}
+
+<style>
+
+    #paypal-button-container {
+        margin-top: 10px;
+        margin-bottom: 10px;
+        text-align: center;
+        font-family: verdana;
+    }
+
+    #limepay-description {
+        margin-top: 10px;
+        margin-bottom: 10px;
+        display: block;
+        text-align: center;
+        font-family: verdana;
+        font-weight: bold;
+    }
+</style>
+
 <input type="hidden" asp-for="Errors" />
 
 @if (!string.IsNullOrEmpty(Model.OrderId))
 {
+    <div id="limepay-description" class="infoContainertext">
+        <p>@T("Plugins.Payments.PayPalCommerceSSI.CustomerInstructions")</p>
+    </div>
+
     <div id="paypal-button-container"></div>
 
     <script asp-location="Footer">
         $(document).ready(function () {
-            $('.payment-info-next-step-button').hide();
+
+            $('.confirm-order-next-step-button').hide();
+            var tos = document.getElementById("termsofservice");
+            if (tos != null)
+                tos.checked = true;
 
             var paymentForm = paypal.Buttons({
                 style: {
@@ -20,28 +58,30 @@
                 },
 
                 createOrder: function (data, actions) {
+                    document.getElementById("limepay-description").style.display = 'none';
                     return '@Model.OrderId';
                 },
 
-                onApprove: function(data, actions) {
-                    $('button.payment-info-next-step-button').trigger("click");
+                onApprove: function (data, actions) {
+                    $('#paypal-information-container').hide();
+                    $('#paypal-button-container').hide();
+                    window.location.href = '/PayPalCommerceSSI/paymenthandler' + '?response=@Model.OrderId'
                 },
 
                 onError: function (err) {
                     $('#@Html.IdFor(model => model.Errors)').val(err);
                     paymentForm = null;
-                    $('button.payment-info-next-step-button').trigger("click");
+                },
+
+                onCancel: function (data) {
+                    document.getElementById("limepay-description").style.display = 'block';
                 }
             });
+
             if (paymentForm) {
                 paymentForm.render('#paypal-button-container');
             }
 
-            $(document).on('accordion_section_opened', function (data) {
-                if (data.currentSectionId != 'opc-payment_info') {
-                    $('.payment-info-next-step-button').show();
-                }
-            });
         });
     </script>
 }

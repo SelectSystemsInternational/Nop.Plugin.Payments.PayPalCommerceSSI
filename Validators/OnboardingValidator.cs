@@ -1,9 +1,9 @@
 ﻿using FluentValidation;
-using Nop.Plugin.Payments.PayPalCommerce.Models;
+using Nop.Plugin.Payments.PayPalCommerceSSI.Models;
 using Nop.Services.Localization;
 using Nop.Web.Framework.Validators;
 
-namespace Nop.Plugin.Payments.PayPalCommerce.Validators
+namespace Nop.Plugin.Payments.PayPalCommerceSSI.Validators
 {
     /// <summary>
     /// Represents onboarding model validator

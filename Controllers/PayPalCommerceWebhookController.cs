@@ -1,21 +1,23 @@
 ﻿using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Nop.Plugin.Payments.PayPalCommerce.Services;
 
-namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
+using Nop.Plugin.Payments.PayPalCommerceSSI.Services;
+using Nop.Plugin.Payments.PayPalCommerceSSI.Settings;
+
+namespace Nop.Plugin.Payments.PayPalCommerceSSI.Controllers
 {
-    public class PayPalCommerceWebhookController : Controller
+    public class PayPalCommerceSSIWebhookController : Controller
     {
         #region Fields
 
-        private readonly PayPalCommerceSettings _settings;
+        private readonly PayPalCommerceSettingsSSI _settings;
         private readonly ServiceManager _serviceManager;
 
         #endregion
 
         #region Ctor
 
-        public PayPalCommerceWebhookController(PayPalCommerceSettings settings,
+        public PayPalCommerceSSIWebhookController(PayPalCommerceSettingsSSI settings,
             ServiceManager serviceManager)
         {
             _settings = settings;

@@ -5,9 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Nop.Core;
 using Nop.Core.Domain.Orders;
-using Nop.Plugin.Payments.PayPalCommerce.Domain;
-using Nop.Plugin.Payments.PayPalCommerce.Models;
-using Nop.Plugin.Payments.PayPalCommerce.Services;
 using Nop.Services;
 using Nop.Services.Configuration;
 using Nop.Services.Localization;
@@ -17,13 +14,18 @@ using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 using Nop.Web.Framework.Mvc.Filters;
 
-namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
+using Nop.Plugin.Payments.PayPalCommerceSSI.Domain;
+using Nop.Plugin.Payments.PayPalCommerceSSI.Models;
+using Nop.Plugin.Payments.PayPalCommerceSSI.Services;
+using Nop.Plugin.Payments.PayPalCommerceSSI.Settings;
+
+namespace Nop.Plugin.Payments.PayPalCommerceSSI.Controllers
 {
     [Area(AreaNames.Admin)]
     [AutoValidateAntiforgeryToken]
     [ValidateIpAddress]
     [AuthorizeAdmin]
-    public class PayPalCommerceController : BasePluginController
+    public class PayPalCommerceSSIController : BasePluginController
     {
         #region Fields
 
@@ -39,7 +41,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
 
         #region Ctor
 
-        public PayPalCommerceController(ILocalizationService localizationService,
+        public PayPalCommerceSSIController(ILocalizationService localizationService,
             INotificationService notificationService,
             IPermissionService permissionService,
             ISettingService settingService,
@@ -67,7 +69,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
         /// <param name="settings">Plugin settings</param>
         /// <param name="storeId">Store id</param>
         /// <returns>A task that represents the asynchronous operation</returns>
-        private async Task PrepareCredentialsAsync(ConfigurationModel model, PayPalCommerceSettings settings, int storeId)
+        private async Task PrepareCredentialsAsync(ConfigurationModel model, PayPalCommerceSettingsSSI settings, int storeId)
         {
             model.OnboardingModel.MerchantGuid = settings.MerchantGuid;
             model.OnboardingModel.SignUpUrl = settings.SignUpUrl;
@@ -83,7 +85,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
             var (merchant, error) = await _serviceManager.GetMerchantAsync(settings.MerchantGuid);
             if (merchant is null || !string.IsNullOrEmpty(error))
             {
-                var locale = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerce.Configuration.Error");
+                var locale = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerceSSI.Configuration.Error");
                 var errorMessage = string.Format(locale, error, Url.Action("List", "Log"));
                 _notificationService.ErrorNotification(errorMessage, false);
                 return;
@@ -97,19 +99,19 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
 
             if (!merchant.EmailConfirmed || !merchant.PaymentsReceivable || !merchant.PermissionGranted)
             {
-                var onboardingNotCompleted = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerce.Onboarding.InProcess");
+                var onboardingNotCompleted = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerceSSI.Onboarding.InProcess");
                 _notificationService.WarningNotification(onboardingNotCompleted);
                 return;
             }
 
             if (string.IsNullOrEmpty(merchant.ClientId) || string.IsNullOrEmpty(merchant.ClientSecret))
             {
-                var onboardingError = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerce.Onboarding.Error");
+                var onboardingError = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerceSSI.Onboarding.Error");
                 _notificationService.ErrorNotification(onboardingError);
                 return;
             }
 
-            var onboardingCompleted = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerce.Onboarding.Completed");
+            var onboardingCompleted = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerceSSI.Onboarding.Completed");
             _notificationService.SuccessNotification(onboardingCompleted);
 
             //first delete the unused webhook on a previous client, if changed
@@ -134,7 +136,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
                 if (string.IsNullOrEmpty(settings.WebhookUrl))
                 {
                     var url = Url.Action("List", "Log");
-                    var warning = string.Format(await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerce.WebhookWarning"), url);
+                    var warning = string.Format(await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerceSSI.WebhookWarning"), url);
                     _notificationService.WarningNotification(warning, false);
                 }
             }
@@ -163,25 +165,25 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
                 return AccessDeniedView();
 
             var storeId = await _storeContext.GetActiveStoreScopeConfigurationAsync();
-            var settings = await _settingService.LoadSettingAsync<PayPalCommerceSettings>(storeId);
+            var settings = await _settingService.LoadSettingAsync<PayPalCommerceSettingsSSI>(storeId);
 
             //we don't need some of the shared settings that loaded above, so load them separately for chosen store
             if (storeId > 0)
             {
                 settings.WebhookUrl = await _settingService
-                    .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettings)}.{nameof(PayPalCommerceSettings.WebhookUrl)}", storeId: storeId);
+                    .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettingsSSI)}.{nameof(PayPalCommerceSettingsSSI.WebhookUrl)}", storeId: storeId);
                 settings.UseSandbox = await _settingService
-                    .GetSettingByKeyAsync<bool>($"{nameof(PayPalCommerceSettings)}.{nameof(PayPalCommerceSettings.UseSandbox)}", storeId: storeId);
+                    .GetSettingByKeyAsync<bool>($"{nameof(PayPalCommerceSettingsSSI)}.{nameof(PayPalCommerceSettingsSSI.UseSandbox)}", storeId: storeId);
                 settings.ClientId = await _settingService
-                    .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettings)}.{nameof(PayPalCommerceSettings.ClientId)}", storeId: storeId);
+                    .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettingsSSI)}.{nameof(PayPalCommerceSettingsSSI.ClientId)}", storeId: storeId);
                 settings.SecretKey = await _settingService
-                    .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettings)}.{nameof(PayPalCommerceSettings.SecretKey)}", storeId: storeId);
+                    .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettingsSSI)}.{nameof(PayPalCommerceSettingsSSI.SecretKey)}", storeId: storeId);
                 settings.Email = await _settingService
-                    .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettings)}.{nameof(PayPalCommerceSettings.Email)}", storeId: storeId);
+                    .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettingsSSI)}.{nameof(PayPalCommerceSettingsSSI.Email)}", storeId: storeId);
                 settings.MerchantGuid = await _settingService
-                    .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettings)}.{nameof(PayPalCommerceSettings.MerchantGuid)}", storeId: storeId);
+                    .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettingsSSI)}.{nameof(PayPalCommerceSettingsSSI.MerchantGuid)}", storeId: storeId);
                 settings.SignUpUrl = await _settingService
-                    .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettings)}.{nameof(PayPalCommerceSettings.SignUpUrl)}", storeId: storeId);
+                    .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettingsSSI)}.{nameof(PayPalCommerceSettingsSSI.SignUpUrl)}", storeId: storeId);
             }
 
             var model = new ConfigurationModel
@@ -199,7 +201,11 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
                 DisplayLogoInFooter = settings.DisplayLogoInFooter,
                 LogoInFooter = settings.LogoInFooter,
                 ActiveStoreScopeConfiguration = storeId,
-                IsConfigured = ServiceManager.IsConfigured(settings)
+                IsConfigured = ServiceManager.IsConfigured(settings),
+                AdditionalFee = settings.AdditionalFee,
+                AdditionalFeePercentage = settings.AdditionalFeePercentage,
+                UseWorkingCurrency = settings.UseWorkingCurrency,
+                TestMode = settings.TestMode,
             };
 
             await PrepareCredentialsAsync(model, settings, storeId);
@@ -218,6 +224,10 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
                 model.LogoInHeaderLinks_OverrideForStore = await _settingService.SettingExistsAsync(settings, setting => setting.LogoInHeaderLinks, storeId);
                 model.DisplayLogoInFooter_OverrideForStore = await _settingService.SettingExistsAsync(settings, setting => setting.DisplayLogoInFooter, storeId);
                 model.LogoInFooter_OverrideForStore = await _settingService.SettingExistsAsync(settings, setting => setting.LogoInFooter, storeId);
+                model.AdditionalFee_OverrideForStore = await _settingService.SettingExistsAsync(settings, x => x.AdditionalFee, storeId);
+                model.AdditionalFeePercentage_OverrideForStore = await _settingService.SettingExistsAsync(settings, x => x.AdditionalFeePercentage, storeId);
+                model.UseWorkingCurrency_OverrideForStore = await _settingService.SettingExistsAsync(settings, x => x.UseWorkingCurrency, storeId);
+                model.TestMode_OverrideForStore = await _settingService.SettingExistsAsync(settings, setting => setting.TestMode, storeId);
             }
 
             model.PaymentTypes = (await PaymentType.Capture.ToSelectListAsync(false))
@@ -228,7 +238,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
             if (model.IsConfigured && !_shoppingCartSettings.RoundPricesDuringCalculation)
             {
                 var url = Url.Action("AllSettings", "Setting", new { settingName = nameof(ShoppingCartSettings.RoundPricesDuringCalculation) });
-                var warning = string.Format(await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerce.RoundingWarning"), url);
+                var warning = string.Format(await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerceSSI.RoundingWarning"), url);
                 _notificationService.WarningNotification(warning, false);
             }
 
@@ -237,12 +247,12 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
             {
                 var (_, credentialsError) = await _serviceManager.GetAccessTokenAsync(settings);
                 if (!string.IsNullOrEmpty(credentialsError))
-                    _notificationService.ErrorNotification(await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerce.Credentials.Invalid"));
+                    _notificationService.ErrorNotification(await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerceSSI.Credentials.Invalid"));
                 else
-                    _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerce.Credentials.Valid"));
+                    _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerceSSI.Credentials.Valid"));
             }
 
-            return View("~/Plugins/Payments.PayPalCommerce/Views/Configure.cshtml", model);
+            return View("~/Plugins/SSI.Payments.PayPalCommerce/Views/Configure.cshtml", model);
         }
 
         [HttpPost, ActionName("Configure")]
@@ -253,7 +263,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
                 return AccessDeniedView();
 
             var storeId = await _storeContext.GetActiveStoreScopeConfigurationAsync();
-            var settings = await _settingService.LoadSettingAsync<PayPalCommerceSettings>(storeId);
+            var settings = await _settingService.LoadSettingAsync<PayPalCommerceSettingsSSI>(storeId);
 
             //set new settings values
             settings.SetCredentialsManually = model.SetCredentialsManually;
@@ -264,6 +274,10 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
             settings.LogoInHeaderLinks = model.LogoInHeaderLinks;
             settings.DisplayLogoInFooter = model.DisplayLogoInFooter;
             settings.LogoInFooter = model.LogoInFooter;
+            settings.AdditionalFee = model.AdditionalFee;
+            settings.AdditionalFeePercentage = model.AdditionalFeePercentage;
+            settings.UseWorkingCurrency = model.UseWorkingCurrency;
+            settings.TestMode = model.TestMode;
 
             if (model.SetCredentialsManually)
             {
@@ -271,13 +285,13 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
                 if (storeId > 0)
                 {
                     settings.WebhookUrl = await _settingService
-                        .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettings)}.{nameof(PayPalCommerceSettings.WebhookUrl)}", storeId: storeId);
+                        .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettingsSSI)}.{nameof(PayPalCommerceSettingsSSI.WebhookUrl)}", storeId: storeId);
                     settings.UseSandbox = await _settingService
-                        .GetSettingByKeyAsync<bool>($"{nameof(PayPalCommerceSettings)}.{nameof(PayPalCommerceSettings.UseSandbox)}", storeId: storeId);
+                        .GetSettingByKeyAsync<bool>($"{nameof(PayPalCommerceSettingsSSI)}.{nameof(PayPalCommerceSettingsSSI.UseSandbox)}", storeId: storeId);
                     settings.ClientId = await _settingService
-                        .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettings)}.{nameof(PayPalCommerceSettings.ClientId)}", storeId: storeId);
+                        .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettingsSSI)}.{nameof(PayPalCommerceSettingsSSI.ClientId)}", storeId: storeId);
                     settings.SecretKey = await _settingService
-                        .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettings)}.{nameof(PayPalCommerceSettings.SecretKey)}", storeId: storeId);
+                        .GetSettingByKeyAsync<string>($"{nameof(PayPalCommerceSettingsSSI)}.{nameof(PayPalCommerceSettingsSSI.SecretKey)}", storeId: storeId);
                 }
 
                 //first delete the unused webhook on a previous client, if changed
@@ -301,7 +315,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
                     if (string.IsNullOrEmpty(settings.WebhookUrl))
                     {
                         var url = Url.Action("List", "Log");
-                        var warning = string.Format(await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerce.WebhookWarning"), url);
+                        var warning = string.Format(await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerceSSI.WebhookWarning"), url);
                         _notificationService.WarningNotification(warning, false);
                     }
                 }
@@ -320,6 +334,11 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
             await _settingService.SaveSettingOverridablePerStoreAsync(settings, setting => setting.LogoInHeaderLinks, model.LogoInHeaderLinks_OverrideForStore, storeId, false);
             await _settingService.SaveSettingOverridablePerStoreAsync(settings, setting => setting.DisplayLogoInFooter, model.DisplayLogoInFooter_OverrideForStore, storeId, false);
             await _settingService.SaveSettingOverridablePerStoreAsync(settings, setting => setting.LogoInFooter, model.LogoInFooter_OverrideForStore, storeId, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(settings, settings => settings.TestMode, model.TestMode_OverrideForStore, storeId, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(settings, x => x.AdditionalFee, model.AdditionalFee_OverrideForStore, storeId, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(settings, x => x.AdditionalFeePercentage, model.AdditionalFeePercentage_OverrideForStore, storeId, false);
+            await _settingService.SaveSettingOverridablePerStoreAsync(settings, x => x.UseWorkingCurrency, model.UseWorkingCurrency_OverrideForStore, storeId, false);
+
             await _settingService.ClearCacheAsync();
 
             _notificationService.SuccessNotification(await _localizationService.GetResourceAsync("Admin.Plugins.Saved"));
@@ -335,13 +354,13 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
                 return await Configure();
 
             var storeId = await _storeContext.GetActiveStoreScopeConfigurationAsync();
-            var settings = await _settingService.LoadSettingAsync<PayPalCommerceSettings>(storeId);
+            var settings = await _settingService.LoadSettingAsync<PayPalCommerceSettingsSSI>(storeId);
 
             //try to onboard merchant with the passed email
             var (merchant, error) = await _serviceManager.OnboardAsync(model.Email);
             if (!string.IsNullOrEmpty(error))
             {
-                var locale = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerce.Configuration.Error");
+                var locale = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerceSSI.Configuration.Error");
                 var errorMessage = string.Format(locale, error, Url.Action("List", "Log"));
                 _notificationService.ErrorNotification(errorMessage, false);
                 return await Configure();
@@ -364,7 +383,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
             await _settingService.SaveSettingOverridablePerStoreAsync(settings, setting => setting.MerchantGuid, overrideSettings, storeId, false);
             await _settingService.ClearCacheAsync();
 
-            var emailSet = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerce.Onboarding.EmailSet");
+            var emailSet = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerceSSI.Onboarding.EmailSet");
             _notificationService.SuccessNotification(emailSet);
 
             return await Configure();
@@ -375,12 +394,12 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
         public async Task<IActionResult> RevokeAccess()
         {
             var storeId = await _storeContext.GetActiveStoreScopeConfigurationAsync();
-            var settings = await _settingService.LoadSettingAsync<PayPalCommerceSettings>(storeId);
+            var settings = await _settingService.LoadSettingAsync<PayPalCommerceSettingsSSI>(storeId);
 
             var (_, error) = await _serviceManager.RevokeAccessAsync(settings.MerchantGuid);
             if (!string.IsNullOrEmpty(error))
             {
-                var locale = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerce.Configuration.Error");
+                var locale = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerceSSI.Configuration.Error");
                 var errorMessage = string.Format(locale, error, Url.Action("List", "Log"));
                 _notificationService.ErrorNotification(errorMessage, false);
                 return await Configure();
@@ -401,7 +420,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
             await _settingService.SaveSettingOverridablePerStoreAsync(settings, setting => setting.WebhookUrl, overrideSettings, storeId, false);
             await _settingService.ClearCacheAsync();
 
-            var accessRevoked = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerce.Onboarding.AccessRevoked");
+            var accessRevoked = await _localizationService.GetResourceAsync("Plugins.Payments.PayPalCommerceSSI.Onboarding.AccessRevoked");
             _notificationService.SuccessNotification(accessRevoked);
 
             return await Configure();
@@ -414,7 +433,7 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Controllers
 
             //clear URL since the merchant is already signed up
             var storeId = await _storeContext.GetActiveStoreScopeConfigurationAsync();
-            var settings = await _settingService.LoadSettingAsync<PayPalCommerceSettings>(storeId);
+            var settings = await _settingService.LoadSettingAsync<PayPalCommerceSettingsSSI>(storeId);
             settings.SignUpUrl = null;
             await _settingService.SaveSettingOverridablePerStoreAsync(settings, setting => setting.SignUpUrl, model.Email_OverrideForStore, storeId, false);
             await _settingService.ClearCacheAsync();

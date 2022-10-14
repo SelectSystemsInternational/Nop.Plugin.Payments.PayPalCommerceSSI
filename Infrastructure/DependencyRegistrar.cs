@@ -1,10 +1,15 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System;
+using System.IO;
+using Microsoft.Extensions.DependencyInjection;
 using Nop.Core.Configuration;
 using Nop.Core.Infrastructure;
 using Nop.Core.Infrastructure.DependencyManagement;
-using Nop.Plugin.Payments.PayPalCommerce.Services;
+using Nop.Web.Controllers;
 
-namespace Nop.Plugin.Payments.PayPalCommerce.Infrastructure
+using Nop.Plugin.Payments.PayPalCommerceSSI.Services;
+using Nop.Plugin.Payments.PayPalCommerceSSI.Controllers.Public;
+
+namespace Nop.Plugin.Payments.PayPalCommerceSSI.Infrastructure
 {
     /// <summary>
     /// Represents a plugin dependency registrar
@@ -20,6 +25,8 @@ namespace Nop.Plugin.Payments.PayPalCommerce.Infrastructure
         public virtual void Register(IServiceCollection services, ITypeFinder typeFinder, AppSettings appSettings)
         {
             services.AddScoped<ServiceManager>();
+
+            services.AddScoped<CheckoutController, PayPalCommerceSSICheckoutController>();
         }
 
         /// <summary>

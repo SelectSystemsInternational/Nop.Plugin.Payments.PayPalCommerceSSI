@@ -4,8 +4,10 @@
 @addTagHelper *, Nop.Web.Framework
 @addTagHelper *, MiniProfiler.AspNetCore.Mvc
 
+@using Nop.Plugin.Payments.PayPalCommerceSSI.Settings
+
 @inject OrderSettings orderSettings
-@inject PayPalCommerceSettings settings
+@inject PayPalCommerceSettingsSSI settings
 
 @using System.Text.Encodings.Web
 @using Microsoft.AspNetCore.Mvc.ViewFeatures
@@ -14,8 +16,8 @@
 @using Nop.Core.Domain.Common
 @using Nop.Core.Domain.Orders
 @using Nop.Core.Infrastructure
-@using Nop.Plugin.Payments.PayPalCommerce
-@using Nop.Plugin.Payments.PayPalCommerce.Models
+@using Nop.Plugin.Payments.PayPalCommerceSSI
+@using Nop.Plugin.Payments.PayPalCommerceSSI.Models
 @using Nop.Services.Common
 @using Nop.Services.Events
 @using Nop.Web.Extensions
